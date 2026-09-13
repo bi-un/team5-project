@@ -7,7 +7,8 @@ import lombok.Setter;
 
 @Entity
 @Table(name = "ballots")
-@Getter @Setter
+@Getter 
+@Setter
 @NoArgsConstructor
 public class Ballots {
 
