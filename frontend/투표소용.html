@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>투표소 - QR 스캔 및 투표</title>
+    <script src="https://unpkg.com/html5-qrcode"></script>
+    <style>
+        body { font-family: Arial, sans-serif; padding: 20px; text-align: center; }
+        #reader { width: 320px; margin: 20px auto; }
+        .voting-paper { display: none; max-width: 400px; margin: 20px auto; border: 1px solid #ccc; padding: 20px; }
+        .candidate-btn { display: block; width: 100%; padding: 12px; margin: 10px 0; background-color: #28a745; color: white; border: none; cursor: pointer; font-size: 16px; }
+        .fallback-container { margin-top: 15px; }
+    </style>
+</head>
+<body>
+
+    <h2>투표소 - 본인 확인 및 투표</h2>
+
+    <div id="scan-step">
+        <p>유권자의 QR 코드를 카메라에 스캔해주세요.</p>
+        <div id="reader"></div>
+
+        <div class="fallback-container">
+            <p style="font-size: 13px; color: #888;">카메라 스캔이 안 될 경우:</p>
+            <input type="text" id="manual-token" placeholder="난수 코드 입력">
+            <button onclick="processToken(document.getElementById('manual-token').value)">입력</button>
+        </div>
+    </div>
+
+    <div id="vote-step" class="voting-paper">
+        <h3>투표용지</h3>
+        <p>선택할 후보자를 클릭하세요.</p>
+        <button class="candidate-btn" onclick="submitVote(1)">기호 1번 : 후보자 A</button>
+        <button class="candidate-btn" onclick="submitVote(2)">기호 2번 : 후보자 B</button>
+    </div>
+
+    <script>
+        let html5QrcodeScanner;
+
+        function onScanSuccess(decodedText, decodedResult) {
+            console.log(`스캔 결과: ${decodedText}`);
+            
+            html5QrcodeScanner.clear();
+            
+            processToken(decodedText);
+        }
+
+        function processToken(token) {
+            if (!token) {
+                alert("유효한 코드를 입력해주세요.");
+                return;
+            }
+
+            
+            alert(`QR 인증 성공! (토큰: ${token})`);
+
+            document.getElementById('scan-step').style.display = 'none';
+            document.getElementById('vote-step').style.display = 'block';
+        }
+
+        function submitVote(candidateId) {
+            
+            alert(`기호 ${candidateId}번에 투표 완료되었습니다.`);
+            location.reload();
+        }
+
+        window.onload = function() {
+            html5QrcodeScanner = new Html5QrcodeScanner(
+                "reader", 
+                { fps: 10, qrbox: { width: 250, height: 250 } },
+                /* verbose= */ false
+            );
+            html5QrcodeScanner.render(onScanSuccess);
+        };
+    </script>
+</body>
+</html>

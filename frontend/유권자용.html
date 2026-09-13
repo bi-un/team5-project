@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>유권자 - QR 투표권 발급</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+    <style>
+        body { font-family: Arial, sans-serif; padding: 20px; text-align: center; }
+        .form-container { max-width: 400px; margin: 0 auto; text-align: left; }
+        .input-group { margin-bottom: 15px; }
+        .input-group label { display: block; margin-bottom: 5px; }
+        .input-group input, .input-group select { width: 100%; padding: 8px; box-sizing: border-box; }
+        button { width: 100%; padding: 10px; background-color: #007bff; color: white; border: none; cursor: pointer; }
+        #qr-result { margin-top: 30px; display: none; }
+        #qrcode { margin-top: 15px; display: flex; justify-content: center; }
+    </style>
+</head>
+<body>
+
+    <h2>온라인 투표권(QR) 발급</h2>
+    
+    <div class="form-container">
+        <form id="voterForm">
+            <div class="input-group">
+                <label for="name">성명</label>
+                <input type="text" id="name" required placeholder="홍길동">
+            </div>
+            <div class="input-group">
+                <label for="ssn">주민등록번호</label>
+                <input type="password" id="ssn" required placeholder="000000-0000000">
+            </div>
+            <div class="input-group">
+                <label for="constituency">선거구 선택</label>
+                <select id="constituency" required>
+                    <option value="">선택하세요</option>
+                    <option value="A">A 선거구</option>
+                    <option value="B">B 선거구</option>
+                </select>
+            </div>
+            <button type="submit">QR 투표권 발급 요청</button>
+        </form>
+
+        <div id="qr-result">
+            <h3>발급된 투표용 QR 코드</h3>
+            <p>이 QR 코드를 투표소 기기 카메라에 보여주세요.</p>
+            <div id="qrcode"></div>
+            <p style="margin-top: 10px; font-size: 12px; color: #666;">
+                인증 코드: <span id="token-text"></span>
+            </p>
+        </div>
+    </div>
+
+    <script>
+        document.getElementById('voterForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+
+            const name = document.getElementById('name').value;
+            const ssn = document.getElementById('ssn').value;
+            const constituency = document.getElementById('constituency').value;
+
+            
+            const mockUuidToken = 'token-' + Math.random().toString(36).substring(2, 11) + '-' + constituency;
+
+            document.getElementById('qrcode').innerHTML = "";
+
+            new QRCode(document.getElementById('qrcode'), {
+                text: mockUuidToken, 
+                width: 200,
+                height: 200
+            });
+
+            document.getElementById('token-text').textContent = mockUuidToken;
+            document.getElementById('qr-result').style.display = 'block';
+        });
+    </script>
+</body>
+</html>
