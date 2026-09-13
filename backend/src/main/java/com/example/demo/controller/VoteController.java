@@ -11,9 +11,11 @@ import org.springframework.web.bind.annotation.*;
 import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
+import org.springframework.web.bind.annotation.CrossOrigin;
 
 @RestController
 @RequestMapping("/api/vote")
+@CrossOrigin("*")
 public class VoteController {
 
     private final VotersRepository votersRepository;
@@ -57,5 +59,30 @@ public class VoteController {
 
         // 5. 생성된 UUID를 프론트엔드로 반환 (프론트에서 이 값으로 QR 이미지를 그림)
         return ResponseEntity.ok(Map.of("token", tokenUuid));
+    }
+    
+    @PostMapping("/verify-qr")
+    public ResponseEntity<?> verifyQr(@RequestBody Map<String, String> request) {
+        String tokenUuid = request.get("token");
+
+        // 1. DB에 존재하는 토큰인지 확인
+        Optional<Tokens> tokenOpt = tokensRepository.findById(tokenUuid);
+        if (tokenOpt.isEmpty()) {
+            return ResponseEntity.badRequest().body("유효하지 않은 가짜 QR 코드입니다.");
+        }
+
+        Tokens token = tokenOpt.get();
+
+        // 2. 이미 사용된(투표를 마친) 토큰인지 확인
+        if (token.isUsed()) {
+            return ResponseEntity.badRequest().body("이미 사용 처리된 투표권입니다.");
+        }
+
+        // 3. 검증 성공! 프론트엔드에 통과 메시지와 선거구 정보를 전달
+        // (선거구 정보를 넘겨주어야 프론트에서 그 지역 후보자 명단을 띄울 수 있음)
+        return ResponseEntity.ok(Map.of(
+                "message", "QR 인증 성공",
+                "constituency", token.getConstituency()
+        ));
     }
 }

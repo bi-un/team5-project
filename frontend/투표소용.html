@@ -46,17 +46,45 @@
             processToken(decodedText);
         }
 
-        function processToken(token) {
+        // (수정됨) QR 토큰을 백엔드로 보내서 진짜인지 검증하는 함수
+        async function processToken(token) {
             if (!token) {
                 alert("유효한 코드를 입력해주세요.");
                 return;
             }
 
-            
-            alert(`QR 인증 성공! (토큰: ${token})`);
+            try {
+                // 백엔드(스프링 부트)로 QR 토큰 검증 요청 보내기
+                const response = await fetch('http://localhost:8080/api/vote/verify-qr', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ token: token })
+                });
 
-            document.getElementById('scan-step').style.display = 'none';
-            document.getElementById('vote-step').style.display = 'block';
+                // 실패 시 에러 메시지 띄우기 (예: "가짜 QR입니다", "이미 사용 처리된 투표권입니다")
+                if (!response.ok) {
+                    const errorMsg = await response.text();
+                    alert("인증 실패: " + errorMsg);
+                    return;
+                }
+
+                // 성공 시 통과 메시지와 선거구 정보 받기
+                const data = await response.json();
+                alert(`${data.message}! (${data.constituency} 유권자)`);
+
+                // 💡 중요: 다음 단계(투표 제출)에서 쓰기 위해 검증된 토큰과 선거구를 임시로 HTML에 저장해 둡니다.
+                const voteStep = document.getElementById('vote-step');
+                voteStep.dataset.token = token;
+                voteStep.dataset.constituency = data.constituency;
+
+                // 카메라 스캔 화면은 숨기고, 투표용지 화면을 보여줌
+                document.getElementById('scan-step').style.display = 'none';
+                voteStep.style.display = 'block';
+
+            } catch (error) {
+                console.error("통신 에러:", error);
+                alert("서버와 연결할 수 없습니다. 백엔드 서버를 확인해주세요.");
+            }
         }
 
         function submitVote(candidateId) {
