@@ -27,13 +27,13 @@ public class VoteController {
         this.tokensRepository = tokensRepository;
     }
 
-    // 프론트엔드에서 개인정보와 선거구를 입력하고 QR 발급을 요청하는 API
+    //프론트엔드에서 개인정보와 선거구를 입력하고 QR 발급을 요청하는 API
     @PostMapping("/issue-qr")
     public ResponseEntity<?> issueQr(@RequestBody Map<String, String> request) {
         String hashKey = request.get("hashKey");
         String constituency = request.get("constituency");
 
-        // 1. 유권자 명부 대조
+        //1. 유권자 명부 대조
         Optional<Voters> voterOpt = votersRepository.findByHashKey(hashKey);
         if (voterOpt.isEmpty()) {
             return ResponseEntity.badRequest().body("명부에 등록되지 않은 유권자입니다.");
@@ -41,13 +41,17 @@ public class VoteController {
 
         Voters voter = voterOpt.get();
 
-        // 2. 이중투표(이미 투표했는지) 검증
+        //2. 이중투표(이미 투표했는지) 검증
         if (voter.isVoted()) {
             return ResponseEntity.badRequest().body("이미 투표를 완료하셨습니다.");
         }
 
-        // 3. QR코드에 담을 1회용 무작위 난수(UUID) 생성
+        //3. QR코드에 담을 1회용 무작위 난수(UUID) 생성
         String tokenUuid = UUID.randomUUID().toString();
+
+        //추가: 투표 완료
+        voter.setVoted(true);
+        votersRepository.save(voter);
         
         Tokens token = new Tokens();
         token.setTokenUuid(tokenUuid);
@@ -78,8 +82,11 @@ public class VoteController {
             return ResponseEntity.badRequest().body("이미 사용 처리된 투표권입니다.");
         }
 
-        // 3. 검증 성공! 프론트엔드에 통과 메시지와 선거구 정보를 전달
-        // (선거구 정보를 넘겨주어야 프론트에서 그 지역 후보자 명단을 띄울 수 있음)
+        //추가: 투표 완료
+        token.setUsed(true);
+        tokensRepository.save(token);
+
+        //3. 프론트엔드에 통과 메시지와 선거구 정보 전달
         return ResponseEntity.ok(Map.of(
                 "message", "QR 인증 성공",
                 "constituency", token.getConstituency()
