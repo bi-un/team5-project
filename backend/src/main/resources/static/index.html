@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>제N대 선거(XX시 ??구 제N투표소): QR 발급 화면</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+    <style>
+        body { font-family: Arial, sans-serif; padding: 20px; text-align: center; }
+        .form-container { max-width: 400px; margin: 0 auto; text-align: left; }
+        .input-group { margin-bottom: 15px; }
+        .input-group label { display: block; margin-bottom: 5px; }
+        .input-group input, .input-group select { width: 100%; padding: 8px; box-sizing: border-box; }
+        button { width: 100%; padding: 10px; background-color: #007bff; color: white; border: none; cursor: pointer; }
+        #qr-result { margin-top: 30px; display: none; }
+        #qrcode { margin-top: 15px; display: flex; justify-content: center; }
+    </style>
+</head>
+<body>
+
+    <h2>제N투표소: 본인QR 발급</h2>
+    
+    <div class="form-container">
+        <form id="voterForm">
+            <div class="input-group">
+                <label for="name">성명</label>
+                <input type="text" id="name" required placeholder="홍길동">
+            </div>
+            <div class="input-group">
+                <label for="ssn">주민등록번호</label>
+                <input type="password" id="ssn" required placeholder="000000-0000000">
+            </div>
+            <div class="input-group">
+                <label for="constituency">선거구 선택</label>
+                <select id="constituency" required>
+                    <option value="">본인의 선거구</option>
+                    <option value="서울">서울특별시</option>
+                    <option value="인천">인천광역시</option>
+                </select>
+            </div>
+            <button type="submit">제출</button>
+        </form>
+
+        <div id="qr-result">
+            <h3>발급된 투표용 QR 코드</h3>
+            <p>이 QR 코드를 투표소 기기 카메라에 보여주세요.</p>
+            <div id="qrcode"></div>
+            <p style="margin-top: 10px; font-size: 12px; color: #666;">
+                인증 코드: <span id="token-text"></span>
+            </p>
+        </div>
+    </div>
+
+    <script>
+        // 1. 단방향 암호화(SHA-256) 함수: 성명+주민번호를 해시값으로 변환
+        async function sha256(message) {
+            const msgBuffer = new TextEncoder().encode(message);
+            const hashBuffer = await crypto.subtle.digest('SHA-256', msgBuffer);
+            const hashArray = Array.from(new Uint8Array(hashBuffer));
+            return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+        }
+
+        document.getElementById('voterForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+
+            const name = document.getElementById('name').value;
+            const ssn = document.getElementById('ssn').value;
+            const constituency = document.getElementById('constituency').value;
+
+            //ssn에서 숫자(0~9)를 뺀 나머지 문자는 제거
+            const cleanSsn = ssn.replace(/[^0-9]/g, "");
+            // 2. 입력받은 개인정보 해싱 (이 값이 DB의 hash_key와 비교됨)
+            const hashKey = await sha256(name + cleanSsn);
+
+            try {
+                // 3. 백엔드(스프링 부트)로 QR 발급 요청 보내기
+                const response = await fetch('/api/vote/issue-qr', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ 
+                        hashKey: hashKey, 
+                        constituency: constituency 
+                    })
+                });
+
+                // 4. 실패 시 에러 메시지 띄우기 (예: "이미 투표하셨습니다", "명부에 없습니다")
+                if (!response.ok) {
+                    const errorMsg = await response.text();
+                    alert("발급 실패: " + errorMsg);
+                    return;
+                }
+
+                // 5. 성공 시 백엔드가 만든 진짜 난수(UUID) 토큰 받기
+                const data = await response.json();
+                const realToken = data.token; 
+
+                // 6. 화면에 QR 코드 그리기
+                document.getElementById('qrcode').innerHTML = "";
+                new QRCode(document.getElementById('qrcode'), {
+                    text: realToken, 
+                    width: 200,
+                    height: 200
+                });
+
+                document.getElementById('token-text').textContent = realToken;
+                document.getElementById('qr-result').style.display = 'block';
+
+            } catch (error) {
+                console.error("통신 에러:", error);
+                alert("서버와 연결할 수 없습니다. 껐다키고 다시 해주세요.");
+            }
+        });
+    </script>
+</body>
+</html>
