@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>유권자 - QR 투표권 발급</title>
+    <title>제N대 선거(XX시 ??구 제N투표소): QR 발급 화면</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
     <style>
         body { font-family: Arial, sans-serif; padding: 20px; text-align: center; }
@@ -18,7 +18,7 @@
 </head>
 <body>
 
-    <h2>온라인 투표권(QR) 발급</h2>
+    <h2>제N투표소: 본인QR 발급</h2>
     
     <div class="form-container">
         <form id="voterForm">
@@ -33,12 +33,12 @@
             <div class="input-group">
                 <label for="constituency">선거구 선택</label>
                 <select id="constituency" required>
-                    <option value="">선택하세요</option>
-                    <option value="A">A 선거구</option>
-                    <option value="B">B 선거구</option>
+                    <option value="">본인의 선거구</option>
+                    <option value="서울">서울특별시</option>
+                    <option value="인천">인천광역시</option>
                 </select>
             </div>
-            <button type="submit">QR 투표권 발급 요청</button>
+            <button type="submit">제출</button>
         </form>
 
         <div id="qr-result">
@@ -67,8 +67,10 @@
             const ssn = document.getElementById('ssn').value;
             const constituency = document.getElementById('constituency').value;
 
+            //ssn에서 숫자(0~9)를 뺀 나머지 문자는 제거
+            const cleanSsn = ssn.replace(/[^0-9]/g, "");
             // 2. 입력받은 개인정보 해싱 (이 값이 DB의 hash_key와 비교됨)
-            const hashKey = await sha256(name + ssn);
+            const hashKey = await sha256(name + cleanSsn);
 
             try {
                 // 3. 백엔드(스프링 부트)로 QR 발급 요청 보내기
@@ -107,7 +109,7 @@
 
             } catch (error) {
                 console.error("통신 에러:", error);
-                alert("서버와 연결할 수 없습니다. 백엔드 서버가 켜져 있는지 확인해주세요.");
+                alert("서버와 연결할 수 없습니다. 껐다키고 다시 해주세요.");
             }
         });
     </script>

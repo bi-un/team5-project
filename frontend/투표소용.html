@@ -3,22 +3,28 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>투표소 - QR 스캔 및 투표</title>
+    <title>제N대 선거(XX시 ??구 제N투표소): QR 확인 화면</title>
     <script src="https://unpkg.com/html5-qrcode"></script>
     <style>
         body { font-family: Arial, sans-serif; padding: 20px; text-align: center; }
         #reader { width: 320px; margin: 20px auto; }
-        .voting-paper { display: none; max-width: 400px; margin: 20px auto; border: 1px solid #ccc; padding: 20px; }
-        .candidate-btn { display: block; width: 100%; padding: 12px; margin: 10px 0; background-color: #28a745; color: white; border: none; cursor: pointer; font-size: 16px; }
         .fallback-container { margin-top: 15px; }
+        #success-step {display: none; margin: 50px auto; padding: 40px 20px; 
+            border: 3px solid #28a745; border-radius: 15px; max-width: 400px; 
+            background-color: #e9f7ef;}
+        #success-step h2 { color: #28a745; font-size: 28px; margin-bottom: 10px; }
+        #voter-info { font-size: 22px; font-weight: bold; margin-bottom: 20px; }
+        .alert-text { color: #d9534f; font-weight: bold; font-size: 18px; margin-bottom: 30px; }
+        .reset-btn { padding: 12px 24px; background-color: #007bff; color: white; border: none; border-radius: 8px;
+            cursor: pointer; font-size: 16px; font-weight: bold; }
     </style>
 </head>
 <body>
 
-    <h2>투표소 - 본인 확인 및 투표</h2>
+    <h2>제N투표소: QR로 본인확인</h2>
 
     <div id="scan-step">
-        <p>유권자의 QR 코드를 카메라에 스캔해주세요.</p>
+        <p>QR 코드를 카메라에 스캔해주세요.</p>
         <div id="reader"></div>
 
         <div class="fallback-container">
@@ -28,11 +34,11 @@
         </div>
     </div>
 
-    <div id="vote-step" class="voting-paper">
-        <h3>투표용지</h3>
-        <p>선택할 후보자를 클릭하세요.</p>
-        <button class="candidate-btn" onclick="submitVote(1)">기호 1번 : 후보자 A</button>
-        <button class="candidate-btn" onclick="submitVote(2)">기호 2번 : 후보자 B</button>
+    <div id="success-step">
+        <h2>✅ 신원 확인 완료</h2>
+        <p id="voter-info"></p>
+        <p class="alert-text">안내원: 투표용지를 1장 교부해 주세요.</p>
+        <button class="reset-btn" onclick="location.reload()">다음 유권자 대기(화면 초기화)</button>
     </div>
 
     <script>
@@ -40,13 +46,13 @@
 
         function onScanSuccess(decodedText, decodedResult) {
             console.log(`스캔 결과: ${decodedText}`);
+
+            html5QrcodeScanner.clear(); //카메라 중단(안 하면 계속 스캔)
             
-            html5QrcodeScanner.clear();
-            
-            processToken(decodedText);
+            processToken(decodedText);  //QR토큰 검증
         }
 
-        // (수정됨) QR 토큰을 백엔드로 보내서 진짜인지 검증하는 함수
+        // (수정됨) QR토큰을 백엔드로 보내서 진짜인지 검증
         async function processToken(token) {
             if (!token) {
                 alert("유효한 코드를 입력해주세요.");
@@ -54,43 +60,34 @@
             }
 
             try {
-                // 백엔드(스프링 부트)로 QR 토큰 검증 요청 보내기
+                //스프링부트로 QR토큰 검증요청
                 const response = await fetch('http://localhost:8080/api/vote/verify-qr', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ token: token })
                 });
 
-                // 실패 시 에러 메시지 띄우기 (예: "가짜 QR입니다", "이미 사용 처리된 투표권입니다")
+                //실패 시 에러 메시지
                 if (!response.ok) {
                     const errorMsg = await response.text();
                     alert("인증 실패: " + errorMsg);
+                    location.reload(); //다음 차례를 위한 새로고침
                     return;
                 }
 
-                // 성공 시 통과 메시지와 선거구 정보 받기
+                //성공
                 const data = await response.json();
-                alert(`${data.message}! (${data.constituency} 유권자)`);
 
-                // 💡 중요: 다음 단계(투표 제출)에서 쓰기 위해 검증된 토큰과 선거구를 임시로 HTML에 저장해 둡니다.
-                const voteStep = document.getElementById('vote-step');
-                voteStep.dataset.token = token;
-                voteStep.dataset.constituency = data.constituency;
-
-                // 카메라 스캔 화면은 숨기고, 투표용지 화면을 보여줌
+                //스캔 화면은 숨기고, 성공 화면을 보여줌
                 document.getElementById('scan-step').style.display = 'none';
-                voteStep.style.display = 'block';
+                document.getElementById('success-step').style.display = 'block';
+                //백엔드에서 넘겨준 선거구(constituency)를 화면에 출력
+                document.getElementById('voter-info').innerText = `[${data.constituency}] 유권자입니다.`;
 
             } catch (error) {
                 console.error("통신 에러:", error);
-                alert("서버와 연결할 수 없습니다. 백엔드 서버를 확인해주세요.");
+                alert("서버와 연결할 수 없습니다. 담당자에 문의 바랍니다.");
             }
-        }
-
-        function submitVote(candidateId) {
-            
-            alert(`기호 ${candidateId}번에 투표 완료되었습니다.`);
-            location.reload();
         }
 
         window.onload = function() {

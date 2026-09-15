@@ -21,6 +21,7 @@ public class Voters {
     @Column(nullable = false)
     private String constituency; // 선거구[cite: 1]
 
-    @Column(nullable = false)
+    @Column(nullable = false, columnDefinition = "BOOLEAN DEFAULT FALSE")
+                                //투표 여부 기본값(아직 안 한 걸로.)
     private boolean isVoted = false; // 투표 여부 (기본값 false)[cite: 1]
 }
